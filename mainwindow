@@ -1,0 +1,307 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+#include "bordercloudfilter.h"
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+    ui->verticalLayout->layout()->addWidget(&visualizer);
+    visualizer.setGeometry(1,1,visualizer.width(),
+                           visualizer.height());
+    visualizer.setSizePolicy(QSizePolicy::Expanding,
+                             QSizePolicy::Expanding);
+    visualizer.setFocusPolicy(Qt::StrongFocus);
+    visualizer.updateGL();
+    visualizer.addCoordinateSystem();
+
+    tx = 0;
+    ty = 0;
+    tz = 0;
+    rx = 0;
+    ry = 0;
+    rz = 0;
+    current_status = "no cloud";
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+void MainWindow::on_pushButton_cloud_clicked()
+{
+    PointCloud<PointXYZ> cloud;
+    float z_max = 60.0;
+    float r = 1.5;
+    for(float theta = 0; theta<=z_max;theta+=0.5){
+        PointXYZ point;
+        point.z=theta;
+        for(float i = 0; i<=2*M_PI;i+=0.25){
+
+
+            point.x=r*sin(i);
+            point.y=r*cos(i);
+
+            cloud.points.push_back(point);
+
+        }
+    }
+
+    currentPointCloud = cloud;
+//    Tr.setParams(0,0,0,0,0,0);
+//    Tr.transformCloud(cloud);
+    VoxelCloudFilter VCF;
+    VCF.setCellSize(0.5);
+    VCF.filterCloud(currentPointCloud,cloud);
+    //    currentPointCloud = cloud;
+    visualizer.addPointCloud(cloud, ColorScheme::RAINBOW_Z);
+    current_status = "formed cloud";
+}
+
+void MainWindow::on_pushButton_open_file_clicked()
+{
+    QString filePath = QFileDialog::getOpenFileName(this,tr("Open point cloud"),
+                                                    "/home",
+                                                    tr("Cloud files (*ply)"));
+    cout<<"File "<<filePath.toStdString()<<endl;
+
+    fstream fileToRead;
+    fileToRead.open(filePath.toStdString());
+
+    string header_element;
+    bool isCloudWithIntensity = false;
+    while(fileToRead>>header_element && header_element != "end_header"){
+        cout<<header_element<<endl;
+        if (header_element != "scalar_intensity"){
+            isCloudWithIntensity = true;
+        }
+    }
+    if(isCloudWithIntensity){
+        PointCloud<PointXYZI> cloud;
+        float x,y,z,intensity;
+        while (fileToRead>>x>>y>>z>>intensity){
+            PointXYZI point;
+            point.x = x;
+            point.y = y;
+            point.z = z;
+            point.intensity = intensity;
+            cloud.points.push_back(point);
+        }
+        currentPointCloud_intensity = cloud;
+        VoxelCloudFilter VCF;
+        VCF.setCellSize(8);
+        VCF.filterCloud(currentPointCloud_intensity,cloud);
+
+        cout<<"Point cloud was loaded, "<<cloud.points.size()<<endl;
+        visualizer.addPointCloud(cloud, ColorScheme::RAINBOW_INTENSITY);
+
+        current_status = "loaded cloud";
+    }
+
+}
+
+
+
+void MainWindow::on_pushButton_clear_clicked()
+{
+    currentPointCloud.points.clear();
+    visualizer.clear();
+
+    current_status = "no_cloud";
+
+}
+
+
+
+void MainWindow::on_doubleSpinBox_t_x_valueChanged(double arg1)
+{
+    if(current_status == "formed cloud"){
+        PointCloud<PointXYZ> cloud;
+        cloud = currentPointCloud;
+        tx = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
+
+    }
+
+    if(current_status == "loaded cloud"){
+        PointCloud<PointXYZI> cloud;
+        cloud = currentPointCloud_intensity;
+        tx = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+
+    }
+
+}
+void MainWindow::on_doubleSpinBox_t_y_valueChanged(double arg1)
+{
+    if(current_status == "formed cloud"){
+        PointCloud<PointXYZ> cloud;
+        cloud = currentPointCloud;
+        ty = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
+    }
+    if(current_status == "loaded cloud"){
+        PointCloud<PointXYZI> cloud;
+        cloud = currentPointCloud_intensity;
+        ty = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+    }
+}
+void MainWindow::on_doubleSpinBox_t_z_valueChanged(double arg1)
+{
+    if(current_status == "formed cloud"){
+        PointCloud<PointXYZ> cloud;
+        cloud = currentPointCloud;
+        tz = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
+    }
+    if(current_status == "loaded cloud"){
+        PointCloud<PointXYZI> cloud;
+        cloud = currentPointCloud_intensity;
+        tz = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+    }
+}
+
+void MainWindow::on_doubleSpinBox_r_x_valueChanged(double arg1)
+{
+    if(current_status == "formed cloud"){
+        PointCloud<PointXYZ> cloud;
+        cloud = currentPointCloud;
+        rx = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
+    }
+
+    if(current_status == "loaded cloud"){
+        PointCloud<PointXYZI> cloud;
+        cloud = currentPointCloud_intensity;
+        rx = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+    }
+}
+void MainWindow::on_doubleSpinBox_r_y_valueChanged(double arg1)
+{
+    if(current_status == "formed cloud"){
+    PointCloud<PointXYZ> cloud;
+    cloud = currentPointCloud;
+    ry = arg1;
+    Tr.setParams(tx,ty,tz,rx,ry,rz);
+    Tr.transformCloud(cloud);
+    visualizer.clear();
+    visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
+}
+    if(current_status == "loaded cloud"){
+    PointCloud<PointXYZI> cloud;
+    cloud = currentPointCloud_intensity;
+    ry = arg1;
+    Tr.setParams(tx,ty,tz,rx,ry,rz);
+    Tr.transformCloud(cloud);
+    visualizer.clear();
+    visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+}
+}
+void MainWindow::on_doubleSpinBox_r_z_valueChanged(double arg1)
+{
+    if(current_status == "formed cloud"){
+    PointCloud<PointXYZ> cloud;
+    cloud = currentPointCloud;
+    rz = arg1;
+    Tr.setParams(tx,ty,tz,rx,ry,rz);
+    Tr.transformCloud(cloud);
+    visualizer.clear();
+    visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
+}
+    if(current_status == "loaded cloud"){
+    PointCloud<PointXYZI> cloud;
+    cloud = currentPointCloud_intensity;
+    rz = arg1;
+    Tr.setParams(tx,ty,tz,rx,ry,rz);
+    Tr.transformCloud(cloud);
+    visualizer.clear();
+    visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+}
+}
+void MainWindow::on_pushButton_filterCloud_clicked()
+{
+    BorderCloudFilter bord_filter;
+    bord_filter.setLimits(ui->doubleSpinBox_filter_min_x->value(),
+                          ui->doubleSpinBox_filter_min_y->value(),
+                          ui->doubleSpinBox_filter_min_z->value(),
+                          ui->doubleSpinBox_filter_max_x->value(),
+                          ui->doubleSpinBox_filter_max_y->value(),
+                          ui->doubleSpinBox_filter_max_z->value());
+    if(current_status == "formed cloud"){
+
+
+        PointCloud<PointXYZ> cloud;
+
+        BorderScheme scheme;
+        if(ui->comboBox_border_type->currentText() == "Border X"){
+            scheme = BorderScheme::BORDER_X;
+        }
+        if(ui->comboBox_border_type->currentText() == "Border Y"){
+            scheme = BorderScheme::BORDER_Y;
+        }
+        if(ui->comboBox_border_type->currentText() == "Border Z"){
+            scheme = BorderScheme::BORDER_Z;
+        }
+        if(ui->comboBox_border_type->currentText() == "Border 3D"){
+            scheme = BorderScheme::BORDER_3D;
+        }
+        bord_filter.filterCloud(currentPointCloud,
+                                cloud, scheme);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
+    }
+
+    if(current_status == "loaded cloud"){
+
+
+        PointCloud<PointXYZI> cloud;
+
+        BorderScheme scheme;
+        if(ui->comboBox_border_type->currentText() == "Border X"){
+            scheme = BorderScheme::BORDER_X;
+        }
+        if(ui->comboBox_border_type->currentText() == "Border Y"){
+            scheme = BorderScheme::BORDER_Y;
+        }
+        if(ui->comboBox_border_type->currentText() == "Border Z"){
+            scheme = BorderScheme::BORDER_Z;
+        }
+        if(ui->comboBox_border_type->currentText() == "Border 3D"){
+            scheme = BorderScheme::BORDER_3D;
+        }
+        bord_filter.filterCloud(currentPointCloud_intensity,
+                                cloud, scheme);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+
+        currentPointCloud_intensity = cloud;
+    }
+}
