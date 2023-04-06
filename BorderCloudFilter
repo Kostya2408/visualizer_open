@@ -1,0 +1,93 @@
+#include "bordercloudfilter.h"
+
+BorderCloudFilter::BorderCloudFilter()
+{
+    minX = 0;
+    maxX = 0;
+    minY = 0;
+    maxY = 0;
+    minZ = 0;
+    maxZ = 0;
+}
+
+void BorderCloudFilter::setLimits(float min_x, float min_y, float min_z,
+                                  float max_x, float max_y, float max_z){
+    minX = min_x;
+    minY = min_y;
+    minZ = min_z;
+    maxX = max_x;
+    maxY = max_y;
+    maxZ = max_z;
+
+}
+void BorderCloudFilter::setLimitsX(float min_x, float max_x){
+    minX = min_x;
+    maxX = max_x;
+}
+void BorderCloudFilter::setLimitsY(float min_y, float max_y){
+    minY = min_y;
+    maxY = max_y;
+}
+void BorderCloudFilter::setLimitsZ(float min_z, float max_z){
+    minZ = min_z;
+    maxZ = max_z;
+}
+
+void BorderCloudFilter::filterCloud(PointCloud<PointXYZ> &source,
+                                    PointCloud<PointXYZ> &dst,
+                                    BorderScheme scheme){
+    for(unsigned int i = 0;i < source.points.size(); i++){
+        PointXYZ currentPoint = source.points.at(i);
+        if(scheme == BorderScheme::BORDER_X){
+            if(currentPoint.x >= minX && currentPoint.x <= maxX){
+                dst.points.push_back(currentPoint);
+            }
+        }
+        if(scheme == BorderScheme::BORDER_Y){
+            if(currentPoint.y >= minY && currentPoint.y <= maxY){
+                dst.points.push_back(currentPoint);
+            }
+        }
+        if(scheme == BorderScheme::BORDER_Z){
+            if(currentPoint.z >= minZ && currentPoint.z <= maxZ){
+                dst.points.push_back(currentPoint);
+            }
+        }
+        if(scheme == BorderScheme::BORDER_3D){
+            if(currentPoint.x >= minX && currentPoint.x <= maxX && currentPoint.y >= minY && currentPoint.y <= maxY && currentPoint.z >= minZ && currentPoint.z <= maxZ){
+                dst.points.push_back(currentPoint);
+            }
+        }
+
+    }
+
+}
+void BorderCloudFilter::filterCloud(PointCloud<PointXYZI> &source,
+                                    PointCloud<PointXYZI> &dst,
+                                    BorderScheme scheme){
+    for(unsigned int i = 0;i < source.points.size(); i++){
+        PointXYZI currentPoint = source.points.at(i);
+        if(scheme == BorderScheme::BORDER_X){
+            if(currentPoint.x >= minX && currentPoint.x <= maxX){
+                dst.points.push_back(currentPoint);
+            }
+        }
+        if(scheme == BorderScheme::BORDER_Y){
+            if(currentPoint.y >= minY && currentPoint.y <= maxY){
+                dst.points.push_back(currentPoint);
+            }
+        }
+        if(scheme == BorderScheme::BORDER_Z){
+            if(currentPoint.z >= minZ && currentPoint.z <= maxZ){
+                dst.points.push_back(currentPoint);
+            }
+        }
+        if(scheme == BorderScheme::BORDER_3D){
+            if(currentPoint.x >= minX && currentPoint.x <= maxX && currentPoint.y >= minY && currentPoint.y <= maxY && currentPoint.z >= minZ && currentPoint.z <= maxZ){
+                dst.points.push_back(currentPoint);
+            }
+        }
+
+    }
+
+}
