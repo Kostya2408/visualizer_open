@@ -1,0 +1,387 @@
+#include "cloudvisualizer.h"
+#include <iostream>
+CloudVisualizer::CloudVisualizer(QWidget *parent)
+{   //инициализируем камеру
+    //    cam_angle_x = -0.4;
+    //    cam_angle_y = 10;
+
+    //    cam_pos_x = 3;
+    //    cam_pos_y = 3;
+    //    cam_pos_z = 3;
+
+    //вращение объекта
+
+    cam_angle_x = 0.01;
+    cam_angle_y = 0.01;
+
+    dist  = 3;
+
+    cam_pos_x = dist * cos(cam_angle_x) * cos(cam_angle_y);
+    cam_pos_y = dist * cos(cam_angle_x) * sin(cam_angle_y);
+    cam_pos_z = dist * sin(cam_angle_x);
+
+    cam_dir_x = -cam_pos_x;
+    cam_dir_y = -cam_pos_y;
+    cam_dir_z = -cam_pos_z;
+
+
+
+    isCoordinateSystem = false;//флаг делаем
+
+    cloudData.size = 0;
+}
+
+void CloudVisualizer::initializeGL() {
+    glEnable(GL_DEPTH_TEST);
+    glShadeModel(GL_SMOOTH);
+}
+void CloudVisualizer::paintGL() {//все что рисуем
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //Цвет фона
+    glClearColor(0.1f,0.1f,0.1f,1.0f);
+    glLoadIdentity();
+    gluLookAt(cam_pos_x,
+              cam_pos_y,
+              cam_pos_z,
+              cam_pos_x + cam_dir_x,
+              cam_pos_y + cam_dir_y,
+              cam_pos_z + cam_dir_z,
+              0,
+              0,
+              1);
+
+    if(isCoordinateSystem) {
+        glLineWidth(1);//толщина
+
+        //OX
+        glBegin(GL_LINE_STRIP);
+        glColor3f(1.0,0.0,0.0);
+        glVertex3f(0.0,0.0,0.0);
+        glColor3f(1.0,0.0,0.0);
+        glVertex3f(1.0,0.0,0.0);
+        glEnd();
+
+        //OY
+        glBegin(GL_LINE_STRIP);
+        glColor3f(0.0,1.0,0.0);
+        glVertex3f(0.0,0.0,0.0);
+        glColor3f(0.0,1.0,0.0);
+        glVertex3f(0.0,1.0,0.0);
+        glEnd();
+
+        //OZ
+        glBegin(GL_LINE_STRIP);
+        glColor3f(0.0,0.0,1.0);
+        glVertex3f(0.0,0.0,0.0);
+        glColor3f(0.0,0.0,1.0);
+        glVertex3f(0.0,0.0,1.0);
+        glEnd();
+
+    }
+
+    if(cloudData.size>0){
+        glPointSize(3.0);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_COLOR_ARRAY);
+
+        glVertexPointer(3,GL_FLOAT,0,cloudData.vertexData);
+        glColorPointer(3, GL_UNSIGNED_BYTE,0,cloudData.colorData);
+        glDrawArrays(GL_POINTS,0,cloudData.size);
+
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glDisableClientState(GL_COLOR_ARRAY);
+    }
+}
+void CloudVisualizer::resizeGL(int w, int h) {//обеспечивает перезадание размера визуализатора
+    glViewport(0,0,w,h);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(85.0f,
+                   (GLfloat)w/(GLfloat)h,
+                   0.01f,
+                   200.0f);
+    glMatrixMode(GL_MODELVIEW);
+}
+
+void CloudVisualizer::addCoordinateSystem() {
+    isCoordinateSystem = true;
+    updateGL();//позволяет установить флаг в координатную систему без нее не рисуется
+}
+
+void CloudVisualizer::mousePressEvent(QMouseEvent *event) {//есть ли клик
+    if(event->button() == Qt::LeftButton) {
+        isClickedLeft = true;
+        mouse_prev_pose = event->pos();
+    }
+}
+
+void CloudVisualizer::mouseReleaseEvent(QMouseEvent *event) {
+    if(event->button() == Qt::LeftButton) {
+        isClickedLeft = false;
+    }
+}
+
+void CloudVisualizer::mouseMoveEvent(QMouseEvent *event) {//событие кнопки мыши
+    if(isClickedLeft) {
+        cam_angle_y -= (event->pos().x() - mouse_prev_pose.x())*
+                mouse_sens;
+        cam_angle_x += (event->pos().y() - mouse_prev_pose.y())*
+                mouse_sens;
+        mouse_prev_pose = event->pos();
+
+        //        cam_dir_x = cos(cam_angle_x) * cos(cam_angle_y);
+        //        cam_dir_y = cos(cam_angle_x) * sin(cam_angle_y);
+        //        cam_dir_z = sin(cam_angle_x);
+
+        cam_pos_x = dist * cos(cam_angle_x) * cos(cam_angle_y);
+        cam_pos_y = dist * cos(cam_angle_x) * sin(cam_angle_y);
+        cam_pos_z = dist * sin(cam_angle_x);
+
+        cam_dir_x = -cam_pos_x;
+        cam_dir_y = -cam_pos_y;
+        cam_dir_z = -cam_pos_z;
+
+        updateGL();
+
+    }
+}
+
+void CloudVisualizer::keyPressEvent(QKeyEvent *event) {//событие клавиш
+    float key_sens = 0.5;
+    if(event->key()== Qt::Key_W || event->key() == Qt::Key_Up) {
+        cam_pos_x += cam_dir_x * key_sens;
+        cam_pos_y += cam_dir_y * key_sens;
+        cam_pos_z += cam_dir_z * key_sens;
+    }
+    if(event->key()== Qt::Key_S || event->key() == Qt::Key_Down) {
+        cam_pos_x -= cam_dir_x * key_sens;
+        cam_pos_y -= cam_dir_y * key_sens;
+        cam_pos_z -= cam_dir_z * key_sens;
+    }
+    if(event->key()== Qt::Key_A || event->key() == Qt::Key_Left) {
+        cam_pos_x -= cos(-cam_angle_x)
+                * cos(cam_angle_y-M_PI*0.5) * key_sens;
+        cam_pos_y -= cos(-cam_angle_x)
+                * sin(cam_angle_y-M_PI*0.5) * key_sens;
+        cam_pos_z -= sin(-cam_angle_x) * key_sens;
+    }
+    if(event->key()== Qt::Key_D || event->key() == Qt::Key_Right) {
+        cam_pos_x += cos(-cam_angle_x)
+                * cos(cam_angle_y-M_PI*0.5) * key_sens;
+        cam_pos_y += cos(-cam_angle_x)
+                * sin(cam_angle_y-M_PI*0.5) * key_sens;
+        cam_pos_z += sin(-cam_angle_x) * key_sens;
+    }
+    updateGL();
+}
+void CloudVisualizer::wheelEvent(QWheelEvent *event) {//событие мыши
+    float numSteps = event->delta();
+    if(event->orientation() == Qt::Vertical) {
+        //        cam_pos_x += cam_dir_x * numSteps * 0.01;
+        //        cam_pos_y += cam_dir_y * numSteps * 0.01;
+        //        cam_pos_z += cam_dir_z * numSteps * 0.01;
+
+        dist += numSteps * 0.01;
+
+        cam_pos_x = dist * cos(cam_angle_x) * cos(cam_angle_y);
+        cam_pos_y = dist * cos(cam_angle_x) * sin(cam_angle_y);
+        cam_pos_z = dist * sin(cam_angle_x);
+
+        cam_dir_x = -cam_pos_x;
+        cam_dir_y = -cam_pos_y;
+        cam_dir_z = -cam_pos_z;
+    }updateGL();
+}
+
+//void CloudVisualizer::addPointCloud(PointCloudXYZ &cloud) {//событие кнопки
+
+//    cloudData.vertexData =
+//            (GLfloat*)malloc(sizeof(GLfloat)*3*cloud.points.size());
+//    cloudData.colorData =
+//            (GLubyte*)malloc(sizeof(GLubyte)*3*cloud.points.size());
+//    cloudData.size = cloud.points.size();
+//    float z_max = 60.0;//не забудь поменять в майнвиндоу
+//    float kapa = z_max/2.5;
+//    float R = 250;
+//    float G = 0;
+//    float B = 0;
+//    cout<<kapa<<endl;
+//    for(unsigned int i = 0; i<cloudData.size; i++){
+//        cloudData.vertexData[i*3+0] = cloud.points.at(i).x;
+//        cloudData.vertexData[i*3+1] = cloud.points.at(i).y;
+//        cloudData.vertexData[i*3+2] = cloud.points.at(i).z;
+
+
+//            if(cloud.points.at(i).z<kapa){
+//                R = (250/kapa);
+//                G = (250/kapa);
+//                B = 0;
+//               cloudData.colorData[i*3+0]= R;
+//               cloudData.colorData[i*3+1]= G;
+//               cloudData.colorData[i*3+2]= 0;
+//                cout<<"1 sikl "<<cloud.points.at(i).z<<" "<<R<<" "<<G<<" "<<B<<" "<<endl;
+//            }
+//            if(cloud.points.at(i).z>kapa and cloud.points.at(i).z<2*kapa){
+//                R = 0;
+//                G = (250/kapa);
+//                B = (250/kapa);
+//                cloudData.colorData[i*3+0]= 0;
+//                cloudData.colorData[i*3+1]= G;
+//                cloudData.colorData[i*3+2]= B;
+//                cout<<"2 sikl "<<cloud.points.at(i).z<<" "<<R<<" "<<G<<" "<<B<<" "<<endl;
+//            }
+//            if(cloud.points.at(i).z>2*kapa){
+//                R = (125/(kapa/2));
+//                G = 0;
+//                B = (125/(kapa/2));
+
+
+//                cout<<"3 sikl "<<cloud.points.at(i).z<<" "<<R<<" "<<G<<" "<<B<<" "<<endl;
+
+
+//        }
+//            cloudData.colorData[i*3+0]= R;
+//            cloudData.colorData[i*3+1]= G;
+//            cloudData.colorData[i*3+2]= B;
+//    }updateGL();
+//}
+void CloudVisualizer::addPointCloud(PointCloud<PointXYZ> &cloud, ColorScheme scheme) {//событие кнопки
+
+    cloudData.vertexData =
+            (GLfloat*)malloc(sizeof(GLfloat)*3*cloud.points.size());
+    cloudData.colorData =
+            (GLubyte*)malloc(sizeof(GLubyte)*3*cloud.points.size());
+    cloudData.size = cloud.points.size();
+
+    float min_scale, max_scale;
+    if(scheme == ColorScheme::RAINBOW_Z && cloud.points.size() > 0){
+        min_scale = cloud.points.at(0).z;
+        max_scale = cloud.points.at(0).z;
+    }
+
+
+
+    float z_max = 60.0;//не забудь поменять в майнвиндоу
+    float kapa = z_max/2.5;
+    float R = 250;
+    float G = 0;
+    float B = 0;
+    //    cout<<kapa<<endl;
+    for(unsigned int i = 0; i<cloudData.size; i++){
+        cloudData.vertexData[i*3+0] = cloud.points.at(i).x;
+        cloudData.vertexData[i*3+1] = cloud.points.at(i).y;
+        cloudData.vertexData[i*3+2] = cloud.points.at(i).z;
+        if(cloud.points.at(i).z > max_scale){
+            max_scale = cloud.points.at(i).z;
+        }
+        if(cloud.points.at(i).z < min_scale){
+            min_scale = cloud.points.at(i).z;
+        }
+
+        if(cloud.points.at(i).z<kapa){
+            R = (250/kapa);
+            G = (250/kapa);
+            B = 0;
+
+        }
+        if(cloud.points.at(i).z>kapa and cloud.points.at(i).z<2*kapa){
+            R = 0;
+            G = (250/kapa);
+            B = (250/kapa);
+
+        }
+        if(cloud.points.at(i).z>2*kapa){
+            R = (125/(kapa/2));
+            G = 0;
+            B = (125/(kapa/2));
+
+
+        }
+
+
+
+    }
+    float coefficient = 2*M_PI / (max_scale - min_scale);
+    if(scheme == ColorScheme::RAINBOW_Z){
+        for(int i = 0; i < cloud.points.size();i++){
+            cloudData.colorData[i * 3 + 0]=
+                    127 * sin((max_scale - cloud.points.at(i).z) * coefficient + 2 * M_PI/3) + 128;
+            cloudData.colorData[i * 3 + 1]=
+                    127 * sin((max_scale - cloud.points.at(i).z) * coefficient + 2 * M_PI/3 + 2 * M_PI/3) + 128;
+            cloudData.colorData[i * 3 + 2]=
+                    127 * sin((max_scale - cloud.points.at(i).z) * coefficient + 4 * M_PI/3 + 2 * M_PI/3) + 128;
+
+        }
+    }
+
+
+    cloudData.size = cloud.points.size();
+    updateGL();
+}
+void CloudVisualizer::addPointCloud(PointCloud<PointXYZI> &cloud, ColorScheme scheme) {//событие кнопки
+
+    cloudData.vertexData =
+            (GLfloat*)malloc(sizeof(GLfloat)*3*cloud.points.size());
+    cloudData.colorData =
+            (GLubyte*)malloc(sizeof(GLubyte)*3*cloud.points.size());
+    cloudData.size = cloud.points.size();
+
+    float min_scale, max_scale;
+    if(scheme == ColorScheme::RAINBOW_Z && cloud.points.size() > 0){
+        min_scale = cloud.points.at(0).z;
+        max_scale = cloud.points.at(0).z;
+
+    }
+    if(scheme == ColorScheme::RAINBOW_INTENSITY && cloud.points.size() > 0){
+        min_scale = cloud.points.at(0).intensity;
+        max_scale = cloud.points.at(0).intensity;
+    }
+    if(scheme == ColorScheme::RAINBOW_INTENSITY && cloud.points.size() > 0){
+        for(unsigned int i = 0; i<cloudData.size; i++){
+            cloudData.vertexData[i*3+0] = cloud.points.at(i).x;
+            cloudData.vertexData[i*3+1] = cloud.points.at(i).y;
+            cloudData.vertexData[i*3+2] = cloud.points.at(i).z;
+            if(cloud.points.at(i).intensity > max_scale){
+                max_scale = cloud.points.at(i).intensity;
+            }
+            if(cloud.points.at(i).intensity < min_scale){
+                min_scale = cloud.points.at(i).intensity;
+            }
+
+
+        }
+    }
+    float coefficient = 2 * M_PI / (max_scale - min_scale);
+    if(scheme == ColorScheme::RAINBOW_Z){
+        for(int i = 0; i < cloud.points.size();i++){
+            cloudData.colorData[i*3]=  127 * sin((max_scale - cloud.points.at(i).intensity) * coefficient + 2 * M_PI/3) + 128;
+            cloudData.colorData[i*3+1]= 127 * sin((max_scale - cloud.points.at(i).intensity) * coefficient + 2 * M_PI/3 + 2 * M_PI/3) + 128;
+            cloudData.colorData[i*3+2]= 127 * sin((max_scale - cloud.points.at(i).intensity) * coefficient + 4 * M_PI/3 + 2 * M_PI/3) + 128;
+
+
+        }
+    }
+    if(scheme == ColorScheme::RAINBOW_INTENSITY){
+        for(int i = 0; i < cloud.points.size();i++){
+            cloudData.colorData[i * 3 + 0]=
+                    100 * sin((max_scale - cloud.points.at(i).intensity) * coefficient + 2 * M_PI/3) + 128;
+            cloudData.colorData[i * 3 + 1]=
+                    100 * sin((max_scale - cloud.points.at(i).intensity) * coefficient + 2 * M_PI/3 + 2 * M_PI/3) + 128;
+            cloudData.colorData[i * 3 + 2]=
+                    100 * sin((max_scale - cloud.points.at(i).intensity) * coefficient + 4 * M_PI/3 + 2 * M_PI/3) + 128;
+
+        }
+    }
+    cloudData.size = cloud.points.size();
+    updateGL();
+}
+
+void CloudVisualizer::clear(){
+    if(cloudData.size > 0){
+        free(cloudData.vertexData);
+        free(cloudData.colorData);
+        cloudData.size = 0;
+    }
+    updateGL();
+}
