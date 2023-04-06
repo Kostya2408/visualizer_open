@@ -1,0 +1,49 @@
+#include "cloudtransformation.h"
+
+CloudTransformation::CloudTransformation()
+{
+    current_r_x = 0;
+    current_r_y = 0;
+    current_r_z = 0;
+    current_t_x = 0;
+    current_t_y = 0;
+    current_t_z = 0;
+}
+void CloudTransformation::setParams(float tx, float ty, float tz,
+                                    float rx, float ry, float rz){
+    current_r_x = rx;
+    current_r_y = ry;
+    current_r_z = rz;
+    current_t_x = tx;
+    current_t_y = ty;
+    current_t_z = tz;
+}
+void CloudTransformation::transformCloud(PointCloud<PointXYZ> &cloud){
+    for(int i = 0; i < cloud.points.size(); i++){
+        cloud.points.at(i) = rotatePoint<PointXYZ>(cloud.points.at(i),
+                                                      current_r_x,
+                                                      current_r_y,
+                                                      current_r_z);
+        cloud.points.at(i) = translatePoint<PointXYZ>(cloud.points.at(i),
+                                                      current_t_x,
+                                                      current_t_y,
+                                                      current_t_z);
+    }
+}
+void CloudTransformation::transformCloud(PointCloud<PointXYZI> &cloud){
+    for(int i = 0; i < cloud.points.size(); i++){
+        cloud.points.at(i) = rotatePoint<PointXYZI>(cloud.points.at(i),
+                                                      current_r_x,
+                                                      current_r_y,
+                                                      current_r_z);
+        cloud.points.at(i) = translatePoint<PointXYZI>(cloud.points.at(i),
+                                                      current_t_x,
+                                                      current_t_y,
+                                                      current_t_z);
+    }
+}
+void matMultVec(float mat[3][3], float vec[3], float res[3]){
+    res[0] = mat[0][0] * vec[0] + mat[0][1] * vec[1] + mat[0][2] * vec[2];
+    res[1] = mat[1][0] * vec[0] + mat[1][1] * vec[1] + mat[1][2] * vec[2];
+    res[2] = mat[2][0] * vec[0] + mat[2][1] * vec[1] + mat[2][2] * vec[2];
+}
