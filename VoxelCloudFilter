@@ -1,0 +1,29 @@
+#include "voxelcloudfilter.h"
+
+VoxelCloudFilter::VoxelCloudFilter()
+{
+    cellSize =0.5;
+}
+void VoxelCloudFilter::setCellSize(float cell){
+    cellSize = cell;
+}
+void VoxelCloudFilter::filterCloud(PointCloud<PointXYZ> &source,
+                                   PointCloud<PointXYZ> &dst){
+    clock_t begin_time = clock();
+    voxelDistribution<PointXYZ>(source,
+                                dst,
+                                cellSize);
+    cout<<"voxel calculation time"<<
+          float(clock() - begin_time)/CLOCKS_PER_SEC<<endl;
+
+}
+void VoxelCloudFilter::filterCloud(PointCloud<PointXYZI> &source,
+                                   PointCloud<PointXYZI> &dst){
+    clock_t begin_time = clock();
+    voxelDistribution<PointXYZI>(source,
+                                dst,
+                                cellSize);
+    cout<<"voxel calculation time"<<
+          float(clock() - begin_time)/CLOCKS_PER_SEC<<endl;
+}
+
