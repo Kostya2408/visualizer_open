@@ -1,0 +1,29 @@
+#include "pointcloud.h"
+
+
+template<>
+void PointCloud<PointXYZ>::saveToFile(string path){
+    fstream outFile(path,fstream::out|fstream::trunc);
+        for(int i =0;i<points.size();i++){
+            outFile<<points.at(i).x<<" "<<points.at(i).y<<" "<<points.at(i).z<<endl;
+        }outFile.close();
+}
+template<>
+void PointCloud<PointXYZI>::saveToFile(string path){
+    fstream outFile(path,fstream::out|fstream::trunc);
+        for(int i =0;i<points.size();i++){
+            outFile<<points.at(i).x<<" "<<points.at(i).y<<" "<<points.at(i).z<<" "<<points.at(i).intensity<<endl;
+        }outFile.close();
+}
+template<>
+void PointCloud<PointXYZRGB>::saveToFile(string path){
+    fstream outFile(path,fstream::out|fstream::trunc);
+        for(int i =0;i<points.size();i++){
+            outFile<<points.at(i).x<<" "<<points.at(i).y<<" "<<points.at(i).z<<points.at(i).R<<" "<<points.at(i).G<<" "<<points.at(i).B<<endl;
+        }
+    outFile.close();
+}
+
+template class PointCloud<PointXYZ>;
+template class PointCloud<PointXYZI>;
+template class PointCloud<PointXYZRGB>;
