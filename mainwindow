@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "bordercloudfilter.h"
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -49,14 +48,31 @@ void MainWindow::on_pushButton_cloud_clicked()
     }
 
     currentPointCloud = cloud;
-//    Tr.setParams(0,0,0,0,0,0);
-//    Tr.transformCloud(cloud);
+    //    Tr.setParams(0,0,0,0,0,0);
+    //    Tr.transformCloud(cloud);
     VoxelCloudFilter VCF;
     VCF.setCellSize(0.5);
     VCF.filterCloud(currentPointCloud,cloud);
-    //    currentPointCloud = cloud;
     visualizer.addPointCloud(cloud, ColorScheme::RAINBOW_Z);
     current_status = "formed cloud";
+
+    Buffer<PointXYZ> buf(3);
+    PointXYZ p0 = {0,0,0};
+    PointXYZ p1 = {6,2,3};
+    PointXYZ p2 = {5,2,3};
+    PointXYZ p3 = {9,2,3};
+    PointXYZ p4 = {1,1,1};
+
+    buf.tryToAdd(p1, distance(p0,p1));
+    buf.tryToAdd(p2, distance(p0,p2));
+    buf.tryToAdd(p3, distance(p0,p3));
+    buf.tryToAdd(p4, distance(p0,p4));
+
+    for(int i = 0; i < buf.size(); i++) {
+        cout<<"Point "<<i<<" : "<<buf.at(i).x<<" "<<buf.at(i).y<<" "<<buf.at(i).z<<endl;
+    }
+
+
 }
 
 void MainWindow::on_pushButton_open_file_clicked()
@@ -90,10 +106,40 @@ void MainWindow::on_pushButton_open_file_clicked()
         }
         currentPointCloud_intensity = cloud;
         VoxelCloudFilter VCF;
-        VCF.setCellSize(8);
+        VCF.setCellSize(0.5);
         VCF.filterCloud(currentPointCloud_intensity,cloud);
+        currentPointCloud_intensity = cloud;
+        float r = 8;
+        PointXYZI target;
+        target.x = 0;
+        target.y = 0;
+        target.z = 0;
+        target.intensity = 0;
+//        KDtreesearch searcher(cloud);
+//        PointXYZI pointnearestNeighborI;
+//        pointnearestNeighborI = searcher.nearestNeighborI(target);
+//        cout<<pointnearestNeighborI.x<<" "<<pointnearestNeighborI.y<<" "<<pointnearestNeighborI.x<<" "<<endl;
+//        vector<PointXYZI> vectorkdradiusSearch;
+//        vectorkdradiusSearch = searcher.kdradiusSearch(target, r);
+//        for(int j = 0;j < vectorkdradiusSearch.size();j++){
+//            cout<<vectorkdradiusSearch.at(j).x<<" "<<vectorkdradiusSearch.at(j).y<<" "<<vectorkdradiusSearch.at(j).x<<" "<<endl;
+//        }
+//        currentPointCloud_intensity = cloud;
+//        RadiusFilter filterRadius;
+//        filterRadius.setMinN(30);
+//        filterRadius.setRadius(5);
+//        filterRadius.filterCloud(currentPointCloud_intensity,cloud);
 
-        cout<<"Point cloud was loaded, "<<cloud.points.size()<<endl;
+        //        NNsearch searcher;
+        //        PointXYZI nearestPoint;
+        //        vector<PointXYZI> nearestPointsVector;
+        //        nearestPoint = searcher.nearestSearch(targetPoint, cloud);
+        //        nearestPointsVector = searcher.radiusSearch(targetPoint,cloud,radius);
+        //        cout<<nearestPoint.x<<" "<<nearestPoint.y<<" "<<nearestPoint.z<<endl;
+        //        for(int j = 0;j < nearestPointsVector.size();j++){
+        //            cout<<nearestPointsVector.at(j).x<<" "<<nearestPointsVector.at(j).y<<" "<<nearestPointsVector.at(j).x<<" "<<endl;
+        //        }
+        //        cout<<"Point cloud was loaded, "<<cloud.points.size()<<endl;
         visualizer.addPointCloud(cloud, ColorScheme::RAINBOW_INTENSITY);
 
         current_status = "loaded cloud";
@@ -101,8 +147,45 @@ void MainWindow::on_pushButton_open_file_clicked()
 
 }
 
+void MainWindow::on_pushButton_stat_start_clicked()
+{
+    QString filePath = QFileDialog::getOpenFileName(this,tr("Open point cloud"),
+                                                    "/home",
+                                                    tr("Cloud files (*ply)"));
+    cout<<"File "<<filePath.toStdString()<<endl;
 
+    fstream fileToRead;
+    fileToRead.open(filePath.toStdString());
 
+    string header_element;
+    bool isCloudWithRGB = false;
+    while(fileToRead>>header_element && header_element != "end_header"){
+        cout<<header_element<<endl;
+        if (header_element != "scalar_RGB"){
+            isCloudWithRGB = true;
+        }
+    }
+    if(isCloudWithRGB){
+        PointCloud<PointXYZRGB> cloud;
+        float x,y,z;
+        unsigned char R,G,B;
+        while (fileToRead>>x>>y>>z>>R>>G>>B){
+            PointXYZRGB point;
+            point.x = x;
+            point.y = y;
+            point.z = z;
+            point.R = R;
+            point.G = G;
+            point.B = B;
+            cloud.points.push_back(point);
+            currentPointCloud_RGB = cloud;
+            VoxelCloudFilter VCF;
+            VCF.setCellSize(0.5);
+            VCF.filterCloud(currentPointCloud_RGB,cloud);
+            //--------------------------------------------------------продолжать тут или
+        }
+    }
+}
 void MainWindow::on_pushButton_clear_clicked()
 {
     currentPointCloud.points.clear();
@@ -111,8 +194,6 @@ void MainWindow::on_pushButton_clear_clicked()
     current_status = "no_cloud";
 
 }
-
-
 
 void MainWindow::on_doubleSpinBox_t_x_valueChanged(double arg1)
 {
@@ -207,44 +288,44 @@ void MainWindow::on_doubleSpinBox_r_x_valueChanged(double arg1)
 void MainWindow::on_doubleSpinBox_r_y_valueChanged(double arg1)
 {
     if(current_status == "formed cloud"){
-    PointCloud<PointXYZ> cloud;
-    cloud = currentPointCloud;
-    ry = arg1;
-    Tr.setParams(tx,ty,tz,rx,ry,rz);
-    Tr.transformCloud(cloud);
-    visualizer.clear();
-    visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
-}
+        PointCloud<PointXYZ> cloud;
+        cloud = currentPointCloud;
+        ry = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
+    }
     if(current_status == "loaded cloud"){
-    PointCloud<PointXYZI> cloud;
-    cloud = currentPointCloud_intensity;
-    ry = arg1;
-    Tr.setParams(tx,ty,tz,rx,ry,rz);
-    Tr.transformCloud(cloud);
-    visualizer.clear();
-    visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
-}
+        PointCloud<PointXYZI> cloud;
+        cloud = currentPointCloud_intensity;
+        ry = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+    }
 }
 void MainWindow::on_doubleSpinBox_r_z_valueChanged(double arg1)
 {
     if(current_status == "formed cloud"){
-    PointCloud<PointXYZ> cloud;
-    cloud = currentPointCloud;
-    rz = arg1;
-    Tr.setParams(tx,ty,tz,rx,ry,rz);
-    Tr.transformCloud(cloud);
-    visualizer.clear();
-    visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
-}
+        PointCloud<PointXYZ> cloud;
+        cloud = currentPointCloud;
+        rz = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_Z);
+    }
     if(current_status == "loaded cloud"){
-    PointCloud<PointXYZI> cloud;
-    cloud = currentPointCloud_intensity;
-    rz = arg1;
-    Tr.setParams(tx,ty,tz,rx,ry,rz);
-    Tr.transformCloud(cloud);
-    visualizer.clear();
-    visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
-}
+        PointCloud<PointXYZI> cloud;
+        cloud = currentPointCloud_intensity;
+        rz = arg1;
+        Tr.setParams(tx,ty,tz,rx,ry,rz);
+        Tr.transformCloud(cloud);
+        visualizer.clear();mainwindow.h
+        visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+    }
 }
 void MainWindow::on_pushButton_filterCloud_clicked()
 {
@@ -304,4 +385,19 @@ void MainWindow::on_pushButton_filterCloud_clicked()
 
         currentPointCloud_intensity = cloud;
     }
+}
+
+
+
+
+
+void MainWindow::on_pushButton_stat_clicked()
+{
+    statisticalfilter<PointXYZI> SF;
+    PointCloud<PointXYZI> cloud;
+//    cout<<currentPointCloud_intensity.points.size()<<endl;
+    SF.filterCloud(currentPointCloud_intensity, cloud, ui->lineEdit_stat->text().toFloat(), ui->lineEdit_stat_2->text().toFloat());
+    visualizer.clear();
+    visualizer.addPointCloud(cloud,ColorScheme::RAINBOW_INTENSITY);
+    cout<<"gotovo"<<cloud.points.size()<<endl;
 }
